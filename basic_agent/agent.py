@@ -21,6 +21,8 @@ class GeneralAssistant(Agent):
         )
 
 async def entrypoint(ctx: agents.JobContext):
+    await ctx.connect()  # ← add this line
+
     session = AgentSession(
         stt=cartesia.STT(),
         llm=openai.LLM(model="gpt-4o-mini"),
@@ -35,4 +37,4 @@ async def entrypoint(ctx: agents.JobContext):
 
 
 if __name__ == "__main__":
-    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint, agent_name="MortgageAgent"))
+    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint)) # agent_name="MortgageAgent"

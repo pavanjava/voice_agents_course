@@ -70,7 +70,7 @@ LIVEKIT_API_SECRET=secret
 Open a new terminal tab (keep the server running in the previous one), then:
 
 ```bash
-python agent.py console
+python agent_v1.py console
 ```
 
 This starts the agent in terminal console mode — your Mac's mic and speakers are used directly, no browser needed.

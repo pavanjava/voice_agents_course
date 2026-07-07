@@ -7,8 +7,10 @@ from livekit.agents import (
     Agent,
     AgentSession,
     JobContext,
-    room_io,
+    SessionUsageUpdatedEvent,
+    inference
 )
+from livekit.agents.beta.tools import EndCallTool
 from livekit.plugins import openai, cartesia, silero
 from livekit.agents.telemetry import set_tracer_provider
 from dotenv import load_dotenv, find_dotenv
@@ -47,7 +49,7 @@ class GenericAgent(Agent):
             instructions=("You are a conversational agent you can talk with user on any topic that user initiate with you."
                           "You dont have any boundaries or restrictions on the topics that you can speak. "
                           "but the conversation should be very polite and the topic oriented and topic bounded."),
-            tools=[]
+            tools=[EndCallTool()]
         )
 
     async def on_enter(self) -> None:
@@ -78,20 +80,23 @@ async def entrypoint(ctx: JobContext) -> None:
         llm=openai.LLM(model="gpt-4o-mini"),
         tts=cartesia.TTS(),
         turn_detection="vad",
-        vad=silero.VAD.load()
+        vad=inference.VAD(
+            model="silero",
+            min_silence_duration=0.125
+        )
     )
 
-    # @session.on("session_usage_updated")
-    # def on_session_usage_updated(ev: SessionUsageUpdatedEvent):
-    #     for usage in ev.usage.model_usage:
-    #         print(f"{usage.provider}/{usage.model}: {usage}")
-    #
-    # # ctx is the JobContext from your entrypoint function
-    # async def log_usage():
-    #     for usage in session.usage.model_usage:
-    #         print(f"{usage.provider}/{usage.model}: {usage}")
-    #
-    # ctx.add_shutdown_callback(log_usage)
+    @session.on("session_usage_updated")
+    def on_session_usage_updated(ev: SessionUsageUpdatedEvent):
+        for usage in ev.usage.model_usage:
+            print(f"{usage.provider}/{usage.model}: {usage}")
+
+    # ctx is the JobContext from your entrypoint function
+    async def log_usage():
+        for usage in session.usage.model_usage:
+            print(f"{usage.provider}/{usage.model}: {usage}")
+
+    ctx.add_shutdown_callback(log_usage)
 
     await session.start(
         agent=GenericAgent(),

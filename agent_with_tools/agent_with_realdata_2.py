@@ -1,49 +1,74 @@
-import logging
+from pathlib import Path
 
-from ddgs import DDGS
-from dotenv import load_dotenv, find_dotenv
-from livekit import agents
-from livekit.agents import AgentSession, Agent, RoomInputOptions, function_tool
-from livekit.plugins import cartesia, openai
+from dotenv import load_dotenv
+from llama_index.core import (
+    SimpleDirectoryReader,
+    StorageContext,
+    VectorStoreIndex,
+    load_index_from_storage,
+)
+
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    AutoSubscribe,
+    JobContext,
+    cli,
+    inference,
+    llm,
+)
+
+load_dotenv()
+
+# check if storage already exists
+THIS_DIR = Path(__file__).parent
+PERSIST_DIR = THIS_DIR / "query-engine-storage"
+if not PERSIST_DIR.exists():
+    # load the documents and create the index
+    documents = SimpleDirectoryReader(THIS_DIR / "data").load_data()
+    index = VectorStoreIndex.from_documents(documents)
+    # store it for later
+    index.storage_context.persist(persist_dir=PERSIST_DIR)
+else:
+    # load the existing index
+    storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
+    index = load_index_from_storage(storage_context)
 
 
-load_dotenv(find_dotenv())
-
-logger = logging.getLogger("voice-agent")
-
-
-@function_tool()
-async def collect_realtime_data(user_query: str) -> str:
-    """Use this tool to get the real data from vector store"""
-    logger.info(f"collect_realtime_data called with query: {user_query!r}")
-    context = ""
-
-    return context
+@llm.function_tool
+async def query_info(query: str) -> str:
+    """Get more information about a specific topic"""
+    query_engine = index.as_query_engine(use_async=True)
+    res = await query_engine.aquery(query)
+    print("Query result:", res)
+    return str(res)
 
 
+server = AgentServer()
 
-class GeneralAssistant(Agent):
-    def __init__(self):
-        super().__init__(
-            instructions=("You are a User Personal assistant who can assist "
-                          "user by collecting realtime data and responding as a news feed."
-                          "always make use of the tools given to you for fetching the latest information"),
-            tools=[collect_realtime_data]
-        )
 
-async def entrypoint(ctx: agents.JobContext):
-    session = AgentSession(
-        stt=cartesia.STT(),
-        llm=openai.LLM(model="gpt-4o-mini"),
-        tts=cartesia.TTS(),
+@server.rtc_session()
+async def entrypoint(ctx: JobContext):
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
+    agent = Agent(
+        instructions=(
+            "You are a voice assistant created by LiveKit. Your interface "
+            "with users will be voice. You should use short and concise "
+            "responses, and avoiding usage of unpronouncable punctuation."
+        ),
+        stt=inference.STT("deepgram/nova-3"),
+        llm=inference.LLM("openai/gpt-4.1-mini"),
+        tts=inference.TTS("cartesia/sonic-3"),
+        tools=[query_info],
     )
 
-    await session.start(
-        room=ctx.room,
-        agent=GeneralAssistant(),
-        room_input_options=RoomInputOptions()
-    )
+    session = AgentSession()
+    await session.start(agent=agent, room=ctx.room)
+
+    await session.say("Hey, how can I help you today?", allow_interruptions=False)
 
 
 if __name__ == "__main__":
-    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint, agent_name="MortgageAgent"))
+    cli.run_app(server)

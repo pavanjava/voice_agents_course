@@ -1,25 +1,47 @@
 # syntax=docker/dockerfile:1
-ARG PYTHON_VERSION=3.12
+
+ARG PYTHON_VERSION=3.13
 FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS base
 
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 
+# --- Build stage ---
+FROM base AS build
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    python3-dev \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy only dependency manifests first so Docker can cache this layer
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 
-# Generates uv.lock during the build and installs dependencies.
-# If you commit uv.lock and want reproducible installs instead, copy it in
-# above and use `RUN uv sync --frozen` here.
-RUN uv sync
+RUN uv sync --locked
 
-# Now copy the actual application code
+RUN uv run --module livekit.agents download-files
+
+# Copy application code and environment file
 COPY agent.py ./
 
-# Pre-download model files (e.g. Silero VAD weights) so cold start doesn't
-# fetch them on first job — LiveKit agents support a "download-files" step
-RUN uv run agent.py download-files
+# --- Production stage ---
+FROM base
+
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/app" \
+    --shell "/sbin/nologin" \
+    --uid "${UID}" \
+    appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appuser /app /app
+
+USER appuser
 
 CMD ["uv", "run", "agent.py", "start"]

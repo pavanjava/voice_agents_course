@@ -5,13 +5,11 @@ from livekit.agents import (
     Agent,
     AgentSession,
     JobContext,
-    TurnHandlingOptions,
     MetricsCollectedEvent,
     metrics,
     room_io
 )
 from livekit.agents.beta.tools import EndCallTool
-from livekit.agents.voice.turn import TurnDetectionMode
 from livekit.plugins import openai, cartesia
 from dotenv import load_dotenv, find_dotenv
 
@@ -43,17 +41,6 @@ async def entrypoint(ctx: JobContext) -> None:
         stt=cartesia.STT(),
         llm=openai.LLM(model="gpt-4o-mini"),
         tts=cartesia.TTS(),
-        turn_detection=TurnHandlingOptions(
-            interruption={
-                # sometimes background noise could interrupt the agent session, these are considered false positive interruptions
-                # when it's detected, you may resume the agent's speech
-                "resume_false_interruption": True,
-                "false_interruption_timeout": 1.0,
-            },
-            # allow the LLM to generate a response while waiting for the end of turn
-            # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
-            preemptive_generation={"enabled": True, "max_retries": 3},
-        )
     )
 
     @session.on("metrics_collected")

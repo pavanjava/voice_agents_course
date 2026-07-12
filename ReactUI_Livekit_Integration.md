@@ -7,12 +7,12 @@ frontend over WebRTC, using a local LiveKit dev server and a Node token server.
 
 Four services run simultaneously, each in its own terminal tab:
 
-| Service         | Command                     | Port  |
-|-----------------|------------------------------|-------|
-| LiveKit server  | `livekit-server --dev`       | 7880  |
-| Python agent    | `python agent.py start`      | 8081  |
-| Token server    | `node token-server.mjs`      | 3001  |
-| React UI (Vite) | `npm run dev`                | 5173  |
+| Service         | Command                    | Port  |
+|-----------------|----------------------------|-------|
+| LiveKit server  | `livekit-server --dev`     | 7880  |
+| Python agent    | `python agent_v2.py start` | 8081  |
+| Token server    | `node token-server.mjs`    | 3001  |
+| React UI (Vite) | `npm run dev`              | 5173  |
 
 ---
 

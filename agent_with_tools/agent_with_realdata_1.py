@@ -5,7 +5,7 @@ from dotenv import load_dotenv, find_dotenv
 from livekit import agents
 from livekit.agents import AgentSession, Agent, RoomInputOptions, function_tool
 from livekit.plugins import cartesia, openai
-
+from livekit.agents.beta.tools import EndCallTool
 
 load_dotenv(find_dotenv())
 
@@ -32,7 +32,7 @@ class GeneralAssistant(Agent):
             instructions=("You are a User Personal assistant who can assist "
                           "user by collecting realtime data and responding as a news feed."
                           "always make use of the tools given to you for fetching the latest information"),
-            tools=[collect_realtime_data]
+            tools=[collect_realtime_data, EndCallTool()]
         )
 
 async def entrypoint(ctx: agents.JobContext):

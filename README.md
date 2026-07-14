@@ -82,4 +82,3 @@ This starts the agent in terminal console mode — your Mac's mic and speakers a
 - Dev mode is for **local testing only**. Do not use `devkey`/`secret` in production.
 - The `--dev` flag auto-generates a self-signed certificate and skips auth checks.
 - To stop the server, press `Ctrl+C` in the terminal where it is running.
-- 

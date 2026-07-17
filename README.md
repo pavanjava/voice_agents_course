@@ -77,7 +77,7 @@ This starts the agent in terminal console mode — your Mac's mic and speakers a
 
 ---
 
-### Notes
+## Notes
 
 - Dev mode is for **local testing only**. Do not use `devkey`/`secret` in production.
 - The `--dev` flag auto-generates a self-signed certificate and skips auth checks.
